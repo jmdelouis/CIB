@@ -1,0 +1,19 @@
+#!/bin/bash -l
+#SBATCH --job-name=cib
+#SBATCH --account=ens
+#SBATCH --cluster=gpu
+#SBATCH --partition=ens
+#SBATCH --qos=gpu_ens_normal
+#SBATCH --nodes=1
+#SBATCH -w node0298
+#SBATCH --gpus-per-node=2
+#SBATCH --time=12:00:00
+
+cd /obs/jdelouis/CIB
+
+export LD_LIBRARY_PATH=/shared/apps/cudnn/8.1.0-11.2/cuda/lib64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/python3.9/site-packages/tensorrt/
+
+python3.9 cibsep.py -n=512 -s=300 -z=3 -o=sep3 &> /obs/jdelouis/CIB/sep3.log
+exit 0
