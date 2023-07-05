@@ -15,9 +15,9 @@ export LD_LIBRARY_PATH=/shared/apps/cudnn/8.1.0-11.2/cuda/lib64:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/python3.9/site-packages/tensorrt/
 
-python3.9 cibsep.py -n=512 -s=300 -z=2 -o=sepcib-1 -d=/travail/jdelouis/CIB/857-1.npy &> /obs/jdelouis/CIB/sep-1.log
-python3.9 cibsep.py -n=512 -s=300 -z=2 -o=sepcib-2 -d=/travail/jdelouis/CIB/857-2.npy &> /obs/jdelouis/CIB/sep-2.log
-python3.9 cibsep.py -n=512 -s=300 -z=2 -o=sepcib-3 -d=/travail/jdelouis/CIB/857-3.npy &> /obs/jdelouis/CIB/sep-3.log
-python3.9 cibsep.py -n=512 -s=300 -z=2 -o=sepcib-4 -d=/travail/jdelouis/CIB/857-4.npy &> /obs/jdelouis/CIB/sep-4.log
+python3.9 cibsep.py -n=512 -s=300 -z=3 -o=sepcibi-1 -d=/travail/jdelouis/CIB/857-1.npy &> /obs/jdelouis/CIB/sepi-1.log
+python3.9 cibsep.py -n=512 -s=300 -z=3 -o=sepcibi-2 -d=/travail/jdelouis/CIB/857-2.npy &> /obs/jdelouis/CIB/sepi-2.log
+python3.9 cibsep.py -n=512 -s=300 -z=3 -o=sepcibi-3 -d=/travail/jdelouis/CIB/857-3.npy &> /obs/jdelouis/CIB/sepi-3.log
+python3.9 cibsep.py -n=512 -s=300 -z=3 -o=sepcibi-4 -d=/travail/jdelouis/CIB/857-4.npy &> /obs/jdelouis/CIB/sepi-4.log
 
 exit 0

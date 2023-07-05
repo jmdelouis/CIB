@@ -21,7 +21,7 @@ def usage():
     print('--gauss (optional): convert Venus map in gaussian field.')
     print('--k5x5  (optional): Work with a 5x5 kernel instead of a 3x3.')
     print('--k128  (optional): Work with 128 pixel kernel reproducing wignercomputation instead of a 3x3.')
-    print('--data  (optional): If not specified use LSS_map_nside128.npy.')
+    print('--data  (optional): If not specified use /travail/jdelouis/CIB/857-1.npy.')
     print('--out   (optional): If not specified save in *_demo_*.')
     print('--orient(optional): If not specified use 4 orientation')
     print('--mask  (optional): if specified use a mask')
@@ -201,12 +201,28 @@ def main():
     # DEFINE A LOSS FUNCTION AND THE SYNTHESIS
     #=================================================================================
     
+    def iso(res):
+        idx=np.array([0,5,10,15, \
+                      1,6,11,12, \
+                      2,7,8,13,
+                      3,4,9,14],dtype='int')
+
+        res.S1  = res.backend.bk_reduce_mean(res.S1,2)
+        res.P00 = res.backend.bk_reduce_mean(res.P00,2)
+        shape=list(res.S2.shape)
+        res.S2=res.backend.bk_reshape(res.backend.bk_gather(res.backend.bk_reshape(res.S2,[shape[0],shape[1],4*4]),idx,2),[shape[0],shape[1],4,4])
+        res.S2L=res.backend.bk_reshape(res.backend.bk_gather(res.backend.bk_reshape(res.S2L,[shape[0],shape[1],4*4]),idx,2),[shape[0],shape[1],4,4])
+
+        res.S2  =res.backend.bk_reduce_mean(res.S2,3)
+        res.S2L=res.backend.bk_reduce_mean(res.S2L,3)
+        return res
+
     def losscib(x,scat_operator,args):
         
         ref = args[0]
         i857  = args[1]
 
-        learn=scat_operator.eval(i857-x)
+        learn=iso(scat_operator.eval(i857-x))
 
         loss=scat_operator.reduce_mean(scat_operator.square(ref-learn))      
 
@@ -237,10 +253,10 @@ def main():
         return(loss)
 
     # compute the bias from cib 
-    ncib=100
+    ncib=24
     
     for k in range(ncib):
-        tmp=cib_scale*dodown(np.load('data/out_cib%d_map_512.npy'%(k)),nside)
+        tmp=cib_scale*dodown(np.load('data/out_cibiso%d_map_512.npy'%(k)),nside)
         sc0=scat_op.eval(tmp)
         sc1=scat_op.eval(tmp,mask=maskgal)
         sc2=scat_op.eval(tmp,image2=h1,mask=maskgal)
@@ -258,7 +274,7 @@ def main():
     avv=avv/ncib
     avvX=avvX/ncib
             
-    refcib=scat_op.eval(im,mask=mask)
+    refcib=iso(scat_op.eval(im,mask=mask))
     refX=scat_op.eval(i857,image2=h1,mask=maskgal)
     refD=scat_op.eval(i857,mask=maskgal)
     

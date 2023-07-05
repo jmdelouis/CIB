@@ -183,20 +183,37 @@ def main():
     #=================================================================================
     # DEFINE A LOSS FUNCTION AND THE SYNTHESIS
     #=================================================================================
-    
+
+
+    def iso(res):
+        idx=np.array([0,5,10,15, \
+                      1,6,11,12, \
+                      2,7,8,13,
+                      3,4,9,14],dtype='int')
+
+        res.S1  = res.backend.bk_reduce_mean(res.S1,2)
+        res.P00 = res.backend.bk_reduce_mean(res.P00,2)
+        shape=list(res.S2.shape)
+        res.S2=res.backend.bk_reshape(res.backend.bk_gather(res.backend.bk_reshape(res.S2,[shape[0],shape[1],4*4]),idx,2),[shape[0],shape[1],4,4])
+        res.S2L=res.backend.bk_reshape(res.backend.bk_gather(res.backend.bk_reshape(res.S2L,[shape[0],shape[1],4*4]),idx,2),[shape[0],shape[1],4,4])
+
+        res.S2  =res.backend.bk_reduce_mean(res.S2,3)
+        res.S2L=res.backend.bk_reduce_mean(res.S2L,3)
+        return res
+        
     def lossX(x,scat_operator,args):
         
         ref = args[0]
         im  = args[1]
         mask = args[2]
 
-        learn=scat_operator.eval(x)
+        learn=iso(scat_operator.eval(x))
 
         loss=scat_operator.reduce_mean(scat_operator.square(ref-learn))      
 
         return(loss)
 
-    refX=scat_op.eval(im,mask=mask)
+    refX=iso(scat_op.eval(im,mask=mask))
     
     loss1=synthe.Loss(lossX,scat_op,refX,im,mask)
         

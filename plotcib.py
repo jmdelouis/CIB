@@ -67,11 +67,11 @@ def main():
     else:
         import foscat.scat as sc
 
-    refX  = sc.read(outpath+'in_%s_%d'%(outname,nside))
-    start = sc.read(outpath+'st_%s_%d'%(outname,nside))
-    out   = sc.read(outpath+'out_%s_%d'%(outname,nside))
+    refX  = sc.read(outpath+'in_cib1_%d'%(nside))
+    start = sc.read(outpath+'st_cib1_%d'%(nside))
+    out   = sc.read(outpath+'out_cib1_%d'%(nside))
 
-    log= np.load(outpath+'out_%s_log_%d.npy'%(outname,nside))
+    log= np.load(outpath+'out_cib1_log_%d.npy'%(nside))
     plt.figure(figsize=(6,6))
     plt.plot(np.arange(log.shape[0])+1,log,color='black')
     plt.xscale('log')
@@ -82,12 +82,12 @@ def main():
     out.plot(name='Output',color='red',hold=False)
     #(refX-out).plot(name='Diff',color='purple',hold=False)
 
-    im = np.load(outpath+'in_%s_map_%d.npy'%(outname,nside))
+    im = np.load(outpath+'in_cib1_map_%d.npy'%(nside))
     try:
         mm = np.load(outpath+'mm_%s_map_%d.npy'%(outname,nside))
     except:
         mm = np.ones([im.shape[0]])
-    sm = np.load(outpath+'st_%s_map_%d.npy'%(outname,nside))
+    sm = np.load(outpath+'st_cib1_map_%d.npy'%(nside))
     om = np.load(outpath+'out_%s_map_%d.npy'%(outname,nside))
 
     idx=hp.ring2nest(nside,np.arange(12*nside**2))

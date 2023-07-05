@@ -15,6 +15,6 @@ export LD_LIBRARY_PATH=/shared/apps/cudnn/8.1.0-11.2/cuda/lib64:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/python3.9/site-packages/tensorrt/
 
-python3.9 cibgen.py -n=512 -s=100 -z=2 -o=cib -S=1 &> /obs/jdelouis/CIB/cib3.log
+python3.9 cibgen.py -n=512 -s=100 -z=3 -o=cibiso -S=1 &> /obs/jdelouis/CIB/cib3.log
 
 exit 0

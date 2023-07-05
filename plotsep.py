@@ -15,11 +15,12 @@ def usage():
     print('--vmin|-i    (optional): specify the minimum value')
     print('--vmax|-a    (optional): specify the maximum value')
     print('--path|-p    (optional): Define the path where output file are written (default data)')
+    print('--data  (optional): If not specified use /travail/jdelouis/CIB/857-1.npy.')
     exit(0)
     
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:co:m:gi:a:", ["nside", "cov","out","map","geo","vmin","vmax"])
+        opts, args = getopt.getopt(sys.argv[1:], "n:co:m:gi:a:d:", ["nside", "cov","out","map","geo","vmin","vmax","data"])
     except getopt.GetoptError as err:
         # print help information and exit:
         print(err)  # will print something like "option -a not recognized"
@@ -29,6 +30,7 @@ def main():
     cov=False
     nside=-1
     outname='demo'
+    data='/travail/jdelouis/CIB/857-1.npy'
     cmap='viridis'
     docart=False
     vmin=-3
@@ -42,6 +44,9 @@ def main():
             docart=True
         elif o in ("-m","--map"):
             cmap=a[1:]
+        elif o in ("-d", "--data"):
+            data=a[1:]
+            print('Read data from ',data)
         elif o in ("-n", "--nside"):
             nside=int(a[1:])
         elif o in ("-o", "--out"):
@@ -86,7 +91,7 @@ def main():
     om = np.load(outpath+'out_%s_map_%d.npy'%(outname,nside))
     idx=hp.nest2ring(nside,np.arange(12*nside**2))
     idx1=hp.nest2ring(nside,np.arange(12*nside*nside))
-    im=hp.ud_grade(np.load('/travail/jdelouis/CIB/857-1.npy'),nside)[idx]
+    im=hp.ud_grade(np.load(data),nside)[idx]
     h1=hp.ud_grade(np.load('/travail/jdelouis/CIB/H1.npy'),nside)[idx]
     try:
         mm = np.load(outpath+'mm_%s_map_%d.npy'%(outname,nside))
