@@ -15,15 +15,6 @@ export LD_LIBRARY_PATH=/shared/apps/cudnn/8.1.0-11.2/cuda/lib64:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/python3.9/site-packages/tensorrt/
 
-python3.9 cibgen.py -n=512 -s=300 -z=3 -o=cib1 -S=1 &> /obs/jdelouis/CIB/cib3.log
-python3.9 cibgen.py -n=512 -s=300 -z=3 -o=cib2 -S=2 &>> /obs/jdelouis/CIB/cib3.log
-python3.9 cibgen.py -n=512 -s=300 -z=3 -o=cib3 -S=3 &>> /obs/jdelouis/CIB/cib3.log
-python3.9 cibgen.py -n=512 -s=300 -z=3 -o=cib4 -S=4 &>> /obs/jdelouis/CIB/cib3.log
-python3.9 cibgen.py -n=512 -s=300 -z=3 -o=cib5 -S=5 &>> /obs/jdelouis/CIB/cib3.log
-python3.9 cibgen.py -n=512 -s=300 -z=3 -o=cib6 -S=6 &>> /obs/jdelouis/CIB/cib3.log
-python3.9 cibgen.py -n=512 -s=300 -z=3 -o=cib7 -S=7 &>> /obs/jdelouis/CIB/cib3.log
-python3.9 cibgen.py -n=512 -s=300 -z=3 -o=cib8 -S=8 &>> /obs/jdelouis/CIB/cib3.log
-python3.9 cibgen.py -n=512 -s=300 -z=3 -o=cib9 -S=9 &>> /obs/jdelouis/CIB/cib3.log
-python3.9 cibgen.py -n=512 -s=300 -z=3 -o=cib10 -S=10 &>> /obs/jdelouis/CIB/cib3.log
+python3.9 cibgen.py -n=512 -s=100 -z=2 -o=cib -S=1 &> /obs/jdelouis/CIB/cib3.log
 
 exit 0
