@@ -51,7 +51,7 @@ def main():
     dok128=False
     seed=1234
     outname='demo'
-    data="data/LSS_map_nside128.npy"
+    data='/travail/jdelouis/CIB/857-1.npy'
     instep=16
     norient=4
     outpath='data/'
@@ -165,7 +165,7 @@ def main():
     idx1=hp.nest2ring(nside,np.arange(12*nside*nside))
     #im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f857_ns512_rns32_IIcib_PR3_nhi_2p0.fits'),nside)[idx1]
     im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f353_ns512_rns32_IIcib_PR3_nhi_6p0.fits'),nside)[idx1]
-    i857=hp.ud_grade(np.load('/travail/jdelouis/CIB/857-1.npy'),nside)[idx1].astype(atype)
+    i857=hp.ud_grade(np.load(data),nside)[idx1].astype(atype)
     h1=hp.ud_grade(np.load('/travail/jdelouis/CIB/H1.npy'),nside)[idx1].astype(atype)
     a=np.polyfit(h1,i857,1)
     h1=a[0]*h1
