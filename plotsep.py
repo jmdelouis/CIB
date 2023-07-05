@@ -95,24 +95,29 @@ def main():
     sm = np.load(outpath+'st_%s_map_%d.npy'%(outname,nside))
 
     idx=hp.ring2nest(nside,np.arange(12*nside**2))
-    
+
     cib=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f857_ns512_rns32_IIcib_PR3_nhi_2p0.fits'),nside)[idx1]
+    print(cib.min())
+    a=np.polyfit(cib[cib>-1E20],(im-om)[cib>-1E20],1)
+    print('CIB SCALLING ',a[0])
+    a[0]=1.0
     plt.figure(figsize=(12,6))
-    hp.gnomview(im[idx]-1.0,rot=[305,-60],xsize=128,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,1),nest=False,title='Input')
-    hp.gnomview(om-1.0,rot=[305,-60],xsize=128,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,2),nest=True,title='Dust')
-    hp.gnomview(im-om,rot=[305,-60],xsize=128,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,5),nest=True,title='CIB')
-    hp.gnomview(cib,rot=[305,-60],xsize=128,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,4),nest=True,title='CIB In')
-    hp.gnomview(cib-(im-om),rot=[305,-60],xsize=128,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,6),nest=True,title='CIB diff')
-    hp.gnomview(h1,rot=[305,-60],xsize=128,reso=4,cmap=cmap,min=1,max=2.2,hold=False,sub=(2,3,3),nest=True,title='H1')
+    hp.gnomview(im[idx]-1.0,rot=[305,-60],xsize=256,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,1),nest=False,title='Input')
+    hp.gnomview(om-1.0,rot=[305,-60],xsize=256,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,2),nest=True,title='Dust')
+    hp.gnomview(im-om,rot=[305,-60],xsize=256,reso=4,cmap=cmap,min=-0.25,max=0.25,hold=False,sub=(2,3,5),nest=True,title='CIB')
+    hp.gnomview(a[0]*cib,rot=[305,-60],xsize=256,reso=4,cmap=cmap,min=-0.25,max=0.25,hold=False,sub=(2,3,4),nest=True,title='CIB In')
+    hp.gnomview(a[0]*cib-(im-om),rot=[305,-60],xsize=256,reso=4,cmap=cmap,min=-0.25,max=0.25,hold=False,sub=(2,3,6),nest=True,title='CIB diff')
+    hp.gnomview(h1,rot=[305,-60],xsize=256,reso=4,cmap=cmap,min=1,max=2.2,hold=False,sub=(2,3,3),nest=True,title='H1')
 
     plt.figure(figsize=(12,6))
     hp.gnomview(im[idx]-1.0,rot=[-10,-60],xsize=512,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,1),nest=False,title='Input')
     hp.gnomview(om-1.0,rot=[-10,-60],xsize=512,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,2),nest=True,title='Dust')
-    hp.gnomview(im-om,rot=[-10,-60],xsize=512,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,5),nest=True,title='CIB')
-    hp.gnomview(cib,rot=[-10,-60],xsize=512,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,4),nest=True,title='CIB In')
-    hp.gnomview(cib-(im-om),rot=[-10,-60],xsize=512,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,6),nest=True,title='CIB diff')
-    hp.gnomview(2*(4*h1/np.std(h1)-0.5),rot=[-10,-60],xsize=512,reso=4,cmap=cmap,min=-0.5,max=0.5,hold=False,sub=(2,3,3),nest=True,title='H1')
+    hp.gnomview(im-om,rot=[-10,-60],xsize=512,reso=4,cmap=cmap,min=-0.25,max=0.25,hold=False,sub=(2,3,5),nest=True,title='CIB')
+    hp.gnomview(a[0]*cib,rot=[-10,-60],xsize=512,reso=4,cmap=cmap,min=-0.25,max=0.25,hold=False,sub=(2,3,4),nest=True,title='CIB In')
+    hp.gnomview(a[0]*cib-(im-om),rot=[-10,-60],xsize=512,reso=4,cmap=cmap,min=-0.25,max=0.25,hold=False,sub=(2,3,6),nest=True,title='CIB diff')
+    hp.gnomview(h1,rot=[-10,-60],xsize=512,reso=4,cmap=cmap,min=1,max=2.2,hold=False,sub=(2,3,3),nest=True,title='H1')
 
+    vmax=3
     plt.figure(figsize=(6,9))
     hp.mollview(im[idx],cmap=cmap,min=vmin,max=vmax,hold=False,sub=(3,1,1),nest=False,title='Model',norm='hist')
     hp.mollview(om,cmap=cmap,min=vmin,max=vmax,hold=False,sub=(3,1,2),nest=True,title='Output',norm='hist')
@@ -124,7 +129,7 @@ def main():
     maskgal=np.zeros([nmask,12*nside**2],dtype='float32')
     plt.figure(figsize=(6,6))
     for i in range(4):
-        maskgal[i]=np.expand_dims(hp.ud_grade(hp.smoothing(np.load('/travail/jdelouis/CIB/857-1.npy')<im[val[(i+1)*4*nside**2//nmask-1]],10/180.*np.pi),nside)[idx1],0)
+        maskgal[i]=np.expand_dims(hp.ud_grade(hp.smoothing(np.load('/travail/jdelouis/CIB/857-1.npy')<im[val[(i+1)*12*nside**2//nmask-1]],10/180.*np.pi),nside)[idx1],0)
         maskgal[i]/=maskgal[i].mean()
 
         cli=hp.anafast((maskgal[i]*(im-np.median(im)))[idx])
@@ -141,7 +146,6 @@ def main():
         plt.xlabel('Multipoles')
         plt.ylabel('C(l)')
 
-    hp.mollview(maskgal[0],nest=True)
     plt.show()
 
 if __name__ == "__main__":

@@ -154,7 +154,9 @@ def main():
     # Get data
     #=================================================================================
     idx1=hp.nest2ring(nside,np.arange(12*nside*nside))
-    im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f857_ns512_rns32_IIcib_PR3_nhi_2p0.fits'),nside)[idx1]
+    #im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f857_ns512_rns32_IIcib_PR3_nhi_2p0.fits'),nside)[idx1]
+    im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f353_ns512_rns32_IIcib_PR3_nhi_6p0.fits'),nside)[idx1]
+    #im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/residual_map_f353_ns2048_cmb_subtracted_full.fits'),nside)[idx1]
     
     mask=np.ones([1,im.shape[0]])
     mask[0,:]=(im!=hp.UNSEEN)
@@ -167,11 +169,8 @@ def main():
 
     idx=hp.ring2nest(nside,np.arange(12*nside*nside))
     idx1=hp.nest2ring(nside,np.arange(12*nside*nside))
-        
-    np.random.seed(seed)
-    imap=np.random.randn(12*nside**2)*np.std(im[mask[0]==1])
-    imap=(imap-hp.smoothing(imap,np.pi/(2**nscale)))[idx1]
 
+    amp=np.std(im[mask[0]==1])
     smask=((hp.smoothing(mask[0,idx],np.pi/(2**nscale))[idx1])>0.6)*mask[0]
     """
     hp.gnomview(mask[0,:],rot=[0,-80],reso=10,xsize=512,cmap='jet',hold=False,sub=(1,2,1),nest=True)
@@ -206,7 +205,14 @@ def main():
     # RUN ON SYNTHESIS
     #=================================================================================
 
-    omap=sy.run(imap,NUM_EPOCHS = nstep)
+    for i in range(100):
+        np.random.seed(seed+i)
+        imap=np.random.randn(12*nside**2)*amp
+        imap=(imap-hp.smoothing(imap,np.pi/(2**nscale)))[idx1]
+
+        omap=sy.run(imap,NUM_EPOCHS = nstep)
+
+        np.save(outpath+'out_%s%d_map_%d.npy'%(outname,i,nside),omap)
 
     mask=np.ones([1,12*nside**2])
     #=================================================================================

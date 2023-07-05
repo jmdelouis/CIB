@@ -11,7 +11,7 @@ import foscat.Synthesis as synthe
 
 def usage():
     print(' This software is a demo of the foscat library:')
-    print('>python demo.py -n=8 [-c|--cov][-s|--steps=3000][-S=1234|--seed=1234][-x|--xstat] [-g|--gauss][-k|--k5x5][-d|--data][-o|--out][-K|--k128][-r|--orient] [-p|--path] [-r|rmask][-l|--lbfgs]')
+    print('>python demo.py -n=8 [-c|--cov][-s|--steps=3000][-S=1234|--seed=1234][-x|--xstat] [-g|--gauss][-k|--k5x5][-d|--data][-o|--out][-K|--k128][-r|--orient] [-p|--path] [-r|rmask][-l|--lbfgs][-C|--cib]')
     print('-n : is the nside of the input map (nside max = 256 with the default map)')
     print('--cov (optional): use scat_cov instead of scat.')
     print('--steps (optional): number of iteration, if not specified 1000.')
@@ -27,13 +27,15 @@ def usage():
     print('--mask  (optional): if specified use a mask')
     print('--lbfgs (optional): If specified the minimisation DO NOT uses L-BFGS minimisation and work with ADAM')
     print('--nscale (optional): number of cutted scale')
+    print('--cib (optional): scale factor of the CIB from 353 to 857')
+    
     exit(0)
     
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:cS:s:xp:gkd:o:Kr:m:lz:", \
+        opts, args = getopt.getopt(sys.argv[1:], "n:cS:s:xp:gkd:o:Kr:m:lz:C:", \
                                    ["nside", "cov","seed","steps","xstat","path","gauss","k5x5",
-                                    "data","out","k128","orient","mask","lbfgs","nscale"])
+                                    "data","out","k128","orient","mask","lbfgs","nscale","cib"])
     except getopt.GetoptError as err:
         # print help information and exit:
         print(err)  # will print something like "option -a not recognized"
@@ -56,12 +58,17 @@ def main():
     imask=None
     dolbfgs=True
     nscale=4
+    cib_scale=1.0
+    atype='float32'
+
     
     for o, a in opts:
         if o in ("-c","--cov"):
             cov = True
         elif o in ("-n", "--nside"):
             nside=int(a[1:])
+        elif o in ("-C", "--cib"):
+            cib_scale=float(a[1:])
         elif o in ("-s", "--steps"):
             nstep=int(a[1:])
         elif o in ("-S", "--seed"):
@@ -98,6 +105,8 @@ def main():
         else:
             assert False, "unhandled option"
 
+    print('Work with cib_scale=%lf'%(cib_scale))
+    cib_scale=(49/10.5)*cib_scale
     if nside<2 or nside!=2**(int(np.log(nside)/np.log(2))) or (nside>512 and KERNELSZ<=5) or (nside>2**instep and KERNELSZ>5) :
         print('nside should be a power of 2 and in [2,...,512] or [2,...,%d] if -K|-k128 option has been choosen'%(2**instep))
         usage()
@@ -147,22 +156,24 @@ def main():
                      TEMPLATE_PATH=scratch_path,
                      slope=l_slope,
                      gpupos=2,
-                     all_type='float32',
+                     all_type=atype,
                      nstep_max=instep)
     
     #=================================================================================
     # Get data
     #=================================================================================
     idx1=hp.nest2ring(nside,np.arange(12*nside*nside))
-    im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f857_ns512_rns32_IIcib_PR3_nhi_2p0.fits'),nside)[idx1]
-    i857=hp.ud_grade(np.load('/travail/jdelouis/CIB/857-1.npy'),nside)[idx1].astype('float32')
-    h1=hp.ud_grade(np.load('/travail/jdelouis/CIB/H1.npy'),nside)[idx1].astype('float32')
+    #im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f857_ns512_rns32_IIcib_PR3_nhi_2p0.fits'),nside)[idx1]
+    im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f353_ns512_rns32_IIcib_PR3_nhi_6p0.fits'),nside)[idx1]
+    i857=hp.ud_grade(np.load('/travail/jdelouis/CIB/857-1.npy'),nside)[idx1].astype(atype)
+    h1=hp.ud_grade(np.load('/travail/jdelouis/CIB/H1.npy'),nside)[idx1].astype(atype)
     a=np.polyfit(h1,i857,1)
     h1=a[0]*h1
     mask=np.ones([1,im.shape[0]])
     mask[0,:]=(im!=hp.UNSEEN)
 
     im[im==hp.UNSEEN]=0.0
+    im=cib_scale*im
 
     #=================================================================================
     # Generate a random noise with the same coloured than the input data
@@ -181,11 +192,11 @@ def main():
 
     val=np.argsort(i857)
     nmask=5
-    maskgal=np.zeros([nmask,12*nside**2],dtype='float32')
+    maskgal=np.zeros([nmask,12*nside**2],dtype=atype)
     for i in range(nmask):
         maskgal[i]=np.expand_dims(hp.ud_grade(hp.smoothing(np.load('/travail/jdelouis/CIB/857-1.npy')<i857[val[(i+1)*12*nside**2//nmask-1]],10/180.*np.pi),nside)[idx1],0)
         maskgal[i]/=maskgal[i].mean()
-        maskgal[i]/=(2**(i))
+        #maskgal[i]/=(2**(i))
     #=================================================================================
     # DEFINE A LOSS FUNCTION AND THE SYNTHESIS
     #=================================================================================
@@ -207,7 +218,7 @@ def main():
         h1  = args[1]
         mg  = args[2]
         i857  = args[3]
-
+        
         learn=scat_operator.eval(x,image2=h1,mask=mg)
 
         loss=scat_operator.reduce_mean(scat_operator.square(ref-learn))      
@@ -225,19 +236,41 @@ def main():
 
         return(loss)
 
+    # compute the bias from cib 
+    ncib=100
+    
+    for k in range(ncib):
+        tmp=cib_scale*dodown(np.load('data/out_cib%d_map_512.npy'%(k)),nside)
+        sc0=scat_op.eval(tmp)
+        sc1=scat_op.eval(tmp,mask=maskgal)
+        sc2=scat_op.eval(tmp,image2=h1,mask=maskgal)
+
+        if k==0:
+            avv0=sc0
+            avv=sc1
+            avvX=sc2
+        else:
+            avv0=avv0+sc0
+            avv=avv+sc1
+            avvX=avvX+sc2
+        
+    avv0=avv0/ncib
+    avv=avv/ncib
+    avvX=avvX/ncib
+            
     refcib=scat_op.eval(im,mask=mask)
     refX=scat_op.eval(i857,image2=h1,mask=maskgal)
-    refD=scat_op.eval(h1,mask=maskgal)
+    refD=scat_op.eval(i857,mask=maskgal)
     
     loss1=synthe.Loss(losscib,scat_op,refcib,scat_op.to_R(i857))
-    loss2=synthe.Loss(lossX,scat_op,refX,scat_op.to_R(h1),maskgal,scat_op.to_R(i857))
-    loss3=synthe.Loss(lossD,scat_op,refD,maskgal)
+    loss2=synthe.Loss(lossX,scat_op,refX-avvX,scat_op.to_R(h1),maskgal,scat_op.to_R(i857))
+    loss3=synthe.Loss(lossD,scat_op,refD-avv,maskgal)
         
-    sy = synthe.Synthesis([loss1,loss2])
+    sy = synthe.Synthesis([loss1,loss2,loss3])
     #=================================================================================
     # RUN ON SYNTHESIS
     #=================================================================================
-    imap=h1
+    imap=i857
     omap=sy.run(imap,NUM_EPOCHS = nstep,EVAL_FREQUENCY = 10)
 
     mask=np.ones([1,12*nside**2])
