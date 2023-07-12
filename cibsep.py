@@ -252,7 +252,7 @@ def main():
         return(loss)
 
     # compute the bias from cib 
-    ncib=100
+    ncib=10
     
     for k in range(ncib):
         tmp=cib_scale*dodown(np.load('data/out_cibiso%d_map_512.npy'%(k)),nside)
