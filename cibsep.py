@@ -200,31 +200,16 @@ def main():
     #=================================================================================
     # DEFINE A LOSS FUNCTION AND THE SYNTHESIS
     #=================================================================================
-    
-    def iso(res):
-        idx=np.array([0,5,10,15, \
-                      1,6,11,12, \
-                      2,7,8,13,
-                      3,4,9,14],dtype='int')
-
-        res.S1  = res.backend.bk_reduce_mean(res.S1,2)
-        res.P00 = res.backend.bk_reduce_mean(res.P00,2)
-        shape=list(res.S2.shape)
-        res.S2=res.backend.bk_reshape(res.backend.bk_gather(res.backend.bk_reshape(res.S2,[shape[0],shape[1],4*4]),idx,2),[shape[0],shape[1],4,4])
-        res.S2L=res.backend.bk_reshape(res.backend.bk_gather(res.backend.bk_reshape(res.S2L,[shape[0],shape[1],4*4]),idx,2),[shape[0],shape[1],4,4])
-
-        res.S2  =res.backend.bk_reduce_mean(res.S2,3)
-        res.S2L=res.backend.bk_reduce_mean(res.S2L,3)
-        return res
 
     def losscib(x,scat_operator,args):
         
         ref = args[0]
-        i857  = args[1]
+        i857 = args[1]
+        sig  = args[2]
 
-        learn=iso(scat_operator.eval(i857-x))
+        learn=scat_operator.eval(i857-x).iso_mean()
 
-        loss=scat_operator.reduce_mean(scat_operator.square(ref-learn))      
+        loss=scat_operator.reduce_mean(scat_operator.square(sig*(ref-learn)))      
 
         return(loss)
 
@@ -234,10 +219,11 @@ def main():
         h1  = args[1]
         mg  = args[2]
         i857  = args[3]
+        sig  = args[4]
         
         learn=scat_operator.eval(x,image2=h1,mask=mg)
 
-        loss=scat_operator.reduce_mean(scat_operator.square(ref-learn))      
+        loss=scat_operator.reduce_mean(scat_operator.square(sig*(ref-learn)))      
 
         return(loss)
 
@@ -245,15 +231,28 @@ def main():
         
         ref = args[0]
         mg  = args[1]
+        sig  = args[2]
 
         learn=scat_operator.eval(x,mask=mg)
 
-        loss=scat_operator.reduce_mean(scat_operator.square(ref-learn))      
+        loss=scat_operator.reduce_mean(scat_operator.square(sig*(ref-learn)))      
+
+        return(loss)
+
+    def lossH(x,scat_operator,args):
+        
+        mg  = args[0]
+        i857  = args[1]
+        sig  = args[2]
+
+        learn=scat_operator.eval(i857-x,image2=h1,mask=mg)
+
+        loss=scat_operator.reduce_mean(scat_operator.square(sig*learn))      
 
         return(loss)
 
     # compute the bias from cib 
-    ncib=24
+    ncib=100
     
     for k in range(ncib):
         tmp=cib_scale*dodown(np.load('data/out_cibiso%d_map_512.npy'%(k)),nside)
@@ -274,13 +273,20 @@ def main():
     avv=avv/ncib
     avvX=avvX/ncib
             
-    refcib=iso(scat_op.eval(im,mask=mask))
+    ref=scat_op.eval(im,mask=mask)
+    refcib=ref.iso_mean()
+    refsig=1/ref.iso_std(repeat=False)
+
     refX=scat_op.eval(i857,image2=h1,mask=maskgal)
+    refXsig=1/refX.iso_std(repeat=True)
+
     refD=scat_op.eval(i857,mask=maskgal)
+    refDsig=1/refD.iso_std(repeat=True)
     
-    loss1=synthe.Loss(losscib,scat_op,refcib,scat_op.to_R(i857))
-    loss2=synthe.Loss(lossX,scat_op,refX-avvX,scat_op.to_R(h1),maskgal,scat_op.to_R(i857))
-    loss3=synthe.Loss(lossD,scat_op,refD-avv,maskgal)
+    loss1=synthe.Loss(losscib,scat_op,refcib,scat_op.to_R(i857),refsig)
+    loss2=synthe.Loss(lossX,scat_op,refX-avvX,scat_op.to_R(h1),maskgal,scat_op.to_R(i857),refXsig)
+    loss3=synthe.Loss(lossD,scat_op,refD-avv,maskgal,refDsig)
+    #loss4=synthe.Loss(lossH,scat_op,maskgal,scat_op.to_R(i857))
         
     sy = synthe.Synthesis([loss1,loss2,loss3])
     #=================================================================================
