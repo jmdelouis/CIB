@@ -127,7 +127,6 @@ def main():
             return(a)
         return(np.mean(a.reshape(12*nside*nside,(nin//nside)**2),1))
 
-
     lam=1.2
     if KERNELSZ==5:
         lam=1.0
@@ -147,110 +146,148 @@ def main():
                      TEMPLATE_PATH=scratch_path,
                      slope=l_slope,
                      gpupos=2,
+                     mask_norm=True,
+                     mask_thres=0.7,
                      all_type='float32',
                      nstep_max=instep)
     
     #=================================================================================
-    # Get data
+    # Get patch data and convert it in healpix nested.
     #=================================================================================
+
+    den=np.load('/travail/jdelouis/CIB/separation_method_low_dust_J_6_pbc_True.npy',allow_pickle=True)
+    cib=den[3]
+    try:
+        idx=np.load('get_method_low_dust_J_6_pbc_idx.npy')
+    except:
+        idx=hp.gnomview(np.arange(12*512*512),xsize=256,ysize=256,reso=4,rot=(305,-60),return_projected_map=True)
+        np.save('get_method_low_dust_J_6_pbc_idx.npy',idx.data.astype('int'))
+        exit(0)
+
+    him=np.bincount(idx.flatten(),minlength=12*512*512)
+    im=np.bincount(idx.flatten(),weights=cib.flatten(),minlength=12*512*512)
+    
+    im[him>0]=im[him>0]/him[him>0]
+    mask=him>0
+
     idx1=hp.nest2ring(nside,np.arange(12*nside*nside))
+    im=im[idx1]
+    mask=np.expand_dims(mask[idx1],0)
+
+    # older version using healpix data 
     #im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f857_ns512_rns32_IIcib_PR3_nhi_2p0.fits'),nside)[idx1]
-    im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f353_ns512_rns32_IIcib_PR3_nhi_6p0.fits'),nside)[idx1]
+    #im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f353_ns512_rns32_IIcib_PR3_nhi_6p0.fits'),nside)[idx1]
     #im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/residual_map_f353_ns2048_cmb_subtracted_full.fits'),nside)[idx1]
     
-    mask=np.ones([1,im.shape[0]])
-    mask[0,:]=(im!=hp.UNSEEN)
-
-    im[im==hp.UNSEEN]=0.0
+    #mask=np.ones([1,im.shape[0]])
+    #mask[0,:]=(im!=hp.UNSEEN)
 
     #=================================================================================
-    # Generate a random noise with the same coloured than the input data
+    # Compute and crop it to be used at the smallest scale
     #=================================================================================
 
     idx=hp.ring2nest(nside,np.arange(12*nside*nside))
     idx1=hp.nest2ring(nside,np.arange(12*nside*nside))
 
     amp=np.std(im[mask[0]==1])
-    smask=((hp.smoothing(mask[0,idx],np.pi/(2**nscale))[idx1])>0.6)*mask[0]
+    smask=hp.smoothing(mask[0,idx],np.pi/nside)[idx1]>0.7
+    smask2=hp.smoothing(mask[0,idx],np.pi/32.0)[idx1]>0.
+    
     """
-    hp.gnomview(mask[0,:],rot=[0,-80],reso=10,xsize=512,cmap='jet',hold=False,sub=(1,2,1),nest=True)
-    hp.gnomview(smask,rot=[0,-80],reso=10,xsize=512,cmap='jet',hold=False,sub=(1,2,2),nest=True)
+    plt.figure()
+    hp.gnomview(mask[0,:],rot=[305,-60],reso=4,xsize=260,cmap='jet',hold=False,sub=(1,2,1),nest=True)
+    hp.gnomview(smask,rot=[305,-60],reso=4,xsize=260,cmap='jet',hold=False,sub=(1,2,2),nest=True)
     plt.show()
     exit(0)
     """
+
     mask[0]=smask/smask.mean()
+    mask2=np.expand_dims(smask2/smask2.mean(),0)
 
     #=================================================================================
     # DEFINE A LOSS FUNCTION AND THE SYNTHESIS
     #=================================================================================
-
-
-    def iso(res):
-        idx=np.array([0,5,10,15, \
-                      1,6,11,12, \
-                      2,7,8,13,
-                      3,4,9,14],dtype='int')
-
-        res.S1  = res.backend.bk_reduce_mean(res.S1,2)
-        res.P00 = res.backend.bk_reduce_mean(res.P00,2)
-        shape=list(res.S2.shape)
-        res.S2=res.backend.bk_reshape(res.backend.bk_gather(res.backend.bk_reshape(res.S2,[shape[0],shape[1],4*4]),idx,2),[shape[0],shape[1],4,4])
-        res.S2L=res.backend.bk_reshape(res.backend.bk_gather(res.backend.bk_reshape(res.S2L,[shape[0],shape[1],4*4]),idx,2),[shape[0],shape[1],4,4])
-
-        res.S2  =res.backend.bk_reduce_mean(res.S2,3)
-        res.S2L=res.backend.bk_reduce_mean(res.S2L,3)
-        return res
         
-    def lossX(x,scat_operator,args):
+    def loss_diff(x,scat_operator,args):
         
-        ref = args[0]
-        im  = args[1]
-        mask = args[2]
+        im  = scat_operator.to_R(args[0])
+        mask = scat_operator.to_R(args[1][0])
 
-        learn=iso(scat_operator.eval(x))
-
-        loss=scat_operator.reduce_mean(scat_operator.square(ref-learn))      
+        loss=scat_operator.backend.bk_reduce_mean(scat_operator.backend.bk_square(300*mask*(x-im)))      
 
         return(loss)
 
-    refX=iso(scat_op.eval(im,mask=mask))
-    
-    loss1=synthe.Loss(lossX,scat_op,refX,im,mask)
+    def loss_scat(x,scat_operator,args):
         
-    sy = synthe.Synthesis([loss1])
+        ref = args[0]
+        refsig = args[1]
+
+        learn=scat_operator.eval(x).iso_mean()
+
+        loss=scat_operator.reduce_mean(scat_operator.square(refsig*(ref-learn)))      
+
+        return(loss)
+
+    def loss_scat_mask(x,scat_operator,args):
+        
+        ref = args[0]
+        refsig = args[1]
+        mask = args[2]
+
+        learn=scat_operator.eval(x,mask=mask).iso_mean()
+
+        loss=scat_operator.reduce_mean(scat_operator.square(refsig*(ref-learn)))      
+
+        return(loss)
+
+    refv=scat_op.eval(im,mask=mask)
+    ref=refv.iso_mean()
+    refsig=1/refv.iso_std()
+
+
+    """
+    print(refX.S1.numpy().flatten())
+    print(refX.S2.numpy().flatten())
+    exit(0)
+    plt.subplot(2,2,1)
+    plt.plot(refX.S1.numpy().flatten())
+    plt.subplot(2,2,2)
+    plt.plot(refX.S2.numpy().flatten())
+    plt.show()
+    exit(0)
+    """
+    loss1=synthe.Loss(loss_scat,scat_op,ref,refsig)
+    loss2=synthe.Loss(loss_diff,scat_op,im.astype('float32'),mask.astype('float32'))
+    loss3=synthe.Loss(loss_scat_mask,scat_op,ref,refsig,mask2)
+        
+    const_sy = synthe.Synthesis([loss1,loss2,loss3])
+    blind_sy = synthe.Synthesis([loss1])
+
     #=================================================================================
-    # RUN ON SYNTHESIS
+    # RUN SYNTHESIS DRIVEN BY INPUT DATA
+    #=================================================================================
+    np.random.seed(seed)
+    imap=np.random.randn(12*nside**2)*amp
+    imap=(imap-hp.smoothing(imap,np.pi/(2**nscale)))[idx1]
+    imap[mask[0]==1]=im[mask[0]==1]
+    omap=const_sy.run(imap,NUM_EPOCHS = 3000,EVAL_FREQUENCY=10)
+    
+    np.save(outpath+'outD_%s_map_%d.npy'%(outname,nside),omap)
+    np.save(outpath+'inD_%s_map_%d.npy'%(outname,nside),im)
+    np.save(outpath+'maskD_%s_map_%d.npy'%(outname,nside),mask)
+
+    #=================================================================================
+    # RUN RANDOM SYNTHESIS
     #=================================================================================
 
     for i in range(100):
-        np.random.seed(seed+i)
+        np.random.seed(seed+1+i)
         imap=np.random.randn(12*nside**2)*amp
         imap=(imap-hp.smoothing(imap,np.pi/(2**nscale)))[idx1]
 
-        omap=sy.run(imap,NUM_EPOCHS = nstep)
+        omap=blind_sy.run(imap,NUM_EPOCHS = nstep,EVAL_FREQUENCY=10)
 
         np.save(outpath+'out_%s%d_map_%d.npy'%(outname,i,nside),omap)
-
-    mask=np.ones([1,12*nside**2])
-    #=================================================================================
-    # STORE RESULTS
-    #=================================================================================
-    if docross:
-        start=scat_op.eval(im,image2=imap,mask=mask)
-        out =scat_op.eval(im,image2=omap,mask=mask)
-    else:
-        start=scat_op.eval(imap,mask=mask)
-        out =scat_op.eval(omap,mask=mask)
-    
-    np.save(outpath+'in_%s_map_%d.npy'%(outname,nside),im)
-    np.save(outpath+'mm_%s_map_%d.npy'%(outname,nside),mask[0])
-    np.save(outpath+'st_%s_map_%d.npy'%(outname,nside),imap)
-    np.save(outpath+'out_%s_map_%d.npy'%(outname,nside),omap)
-    np.save(outpath+'out_%s_log_%d.npy'%(outname,nside),sy.get_history())
-
-    refX.save( outpath+'in_%s_%d'%(outname,nside))
-    start.save(outpath+'st_%s_%d'%(outname,nside))
-    out.save(  outpath+'out_%s_%d'%(outname,nside))
 
     print('Computation Done')
     sys.stdout.flush()

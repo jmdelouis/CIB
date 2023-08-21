@@ -59,7 +59,7 @@ def main():
     dolbfgs=True
     nscale=4
     cib_scale=1.0
-    atype='float32'
+    atype='float64'
 
     
     for o, a in opts:
