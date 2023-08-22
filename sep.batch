@@ -5,7 +5,7 @@
 #SBATCH --partition=ens
 #SBATCH --qos=gpu_ens_normal
 #SBATCH --nodes=1
-#SBATCH -w node0298
+####SBATCH -w node0298
 #SBATCH --gpus-per-node=2
 #SBATCH --time=12:00:00
 
@@ -15,9 +15,9 @@ export LD_LIBRARY_PATH=/shared/apps/cudnn/8.1.0-11.2/cuda/lib64:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/python3.9/site-packages/tensorrt/
 
-python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcib-1 -d=/travail/jdelouis/CIB/857-1.npy &> /obs/jdelouis/CIB/seph-1.log
-python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcib-2 -d=/travail/jdelouis/CIB/857-2.npy &> /obs/jdelouis/CIB/seph-2.log
-python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcib-3 -d=/travail/jdelouis/CIB/857-3.npy &> /obs/jdelouis/CIB/seph-3.log
-python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcib-4 -d=/travail/jdelouis/CIB/857-4.npy &> /obs/jdelouis/CIB/seph-4.log
+python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcibwph-1 -d=/travail/jdelouis/CIB/857-1.npy &> /obs/jdelouis/CIB/sepwph-1.log
+python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcibwph-2 -d=/travail/jdelouis/CIB/857-2.npy &> /obs/jdelouis/CIB/sepwph-2.log
+python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcibwph-3 -d=/travail/jdelouis/CIB/857-3.npy &> /obs/jdelouis/CIB/sepwph-3.log
+python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcibwph-4 -d=/travail/jdelouis/CIB/857-4.npy &> /obs/jdelouis/CIB/sepwph-4.log
 
 exit 0

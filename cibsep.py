@@ -252,10 +252,10 @@ def main():
         return(loss)
 
     # compute the bias from cib 
-    ncib=10
+    ncib=100
     
     for k in range(ncib):
-        tmp=cib_scale*dodown(np.load('data/out_cibiso%d_map_512.npy'%(k)),nside)
+        tmp=cib_scale*dodown(np.load('data/out_cibwph%d_map_512.npy'%(k)),nside)
         sc0=scat_op.eval(tmp)
         sc1=scat_op.eval(tmp,mask=maskgal)
         sc2=scat_op.eval(tmp,image2=h1,mask=maskgal)
