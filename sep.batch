@@ -5,9 +5,9 @@
 #SBATCH --partition=ens
 #SBATCH --qos=gpu_ens_normal
 #SBATCH --nodes=1
-####SBATCH -w node0298
+#SBATCH -w node0298
 #SBATCH --gpus-per-node=2
-#SBATCH --time=12:00:00
+#SBATCH --time=24:00:00
 
 cd /obs/jdelouis/CIB
 
@@ -15,9 +15,15 @@ export LD_LIBRARY_PATH=/shared/apps/cudnn/8.1.0-11.2/cuda/lib64:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/obs/jdelouis/.local/lib/python3.9/site-packages/tensorrt/
 
-python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcibwph-1 -d=/travail/jdelouis/CIB/857-1.npy &> /obs/jdelouis/CIB/sepwph-1.log
-python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcibwph-2 -d=/travail/jdelouis/CIB/857-2.npy &> /obs/jdelouis/CIB/sepwph-2.log
-python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcibwph-3 -d=/travail/jdelouis/CIB/857-3.npy &> /obs/jdelouis/CIB/sepwph-3.log
-python3.9 cibsep.py -n=512 -s=2000 -z=2 -o=sepcibwph-4 -d=/travail/jdelouis/CIB/857-4.npy &> /obs/jdelouis/CIB/sepwph-4.log
+#python3.9 cibsep.py -n=256 -s=1000 -z=2 -o=sepSIMc -k -c -t -d=/travail/jdelouis/CIB/DUST+CIB_SIMU.npy &> /obs/jdelouis/CIB/sepcSIM.log
+#python3.9 cibsep.py -n=256 -s=1000 -z=2 -o=sepSIM -k -t -d=/travail/jdelouis/CIB/DUST+CIB_SIMU.npy &> /obs/jdelouis/CIB/sepSIM.log
+#python3.9 cibsep.py -n=256 -s=400 -z=4 -o=sepcibwph-1 -k -d=/travail/jdelouis/CIB/857-1.npy &> /obs/jdelouis/CIB/sepwph-1.log
+python3.9 cibsep.py -n=256 -s=400 -z=4 -o=sepcibwphc-1 -k -c -d=/travail/jdelouis/CIB/857-1.npy &> /obs/jdelouis/CIB/sepwphc-1.log
+#python3.9 cibsep.py -n=256 -s=400 -z=4 -o=sepcibwph-2 -k -d=/travail/jdelouis/CIB/857-2.npy &> /obs/jdelouis/CIB/sepwph-2.log
+python3.9 cibsep.py -n=256 -s=400 -z=4 -o=sepcibwphc-2 -k -c -d=/travail/jdelouis/CIB/857-2.npy &> /obs/jdelouis/CIB/sepwphc-2.log
+#python3.9 cibsep.py -n=256 -s=400 -z=4 -o=sepcibwph-3 -k -d=/travail/jdelouis/CIB/857-3.npy &> /obs/jdelouis/CIB/sepwph-3.log
+python3.9 cibsep.py -n=256 -s=400 -z=4 -o=sepcibwphc-3 -k -c -d=/travail/jdelouis/CIB/857-3.npy &> /obs/jdelouis/CIB/sepwphc-3.log
+#python3.9 cibsep.py -n=256 -s=400 -z=4 -o=sepcibwph-4 -k -d=/travail/jdelouis/CIB/857-4.npy &> /obs/jdelouis/CIB/sepwph-4.log
+python3.9 cibsep.py -n=256 -s=400 -z=4 -o=sepcibwphc-4 -k -c -d=/travail/jdelouis/CIB/857-4.npy &> /obs/jdelouis/CIB/sepwphc-4.log
 
 exit 0

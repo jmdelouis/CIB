@@ -1,3 +1,4 @@
+
 import numpy as np
 import os, sys
 import matplotlib.pyplot as plt
@@ -56,6 +57,7 @@ def main():
     imask=None
     dolbfgs=True
     nscale=4
+    doR=False
     
     for o, a in opts:
         if o in ("-c","--cov"):
@@ -145,7 +147,8 @@ def main():
                      LAMBDA=lam,
                      TEMPLATE_PATH=scratch_path,
                      slope=l_slope,
-                     gpupos=2,
+                     gpupos=0,
+                     use_R_format=doR,
                      mask_norm=True,
                      mask_thres=0.7,
                      all_type='float32',
@@ -172,15 +175,22 @@ def main():
 
     idx1=hp.nest2ring(nside,np.arange(12*nside*nside))
     im=im[idx1]
+
+    """
+    cib_scale=(49/10.5)
+    np.save('data/tuhin_wph.npy',cib_scale*im)
+    exit(0)
+    """
     mask=np.expand_dims(mask[idx1],0)
 
     # older version using healpix data 
     #im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f857_ns512_rns32_IIcib_PR3_nhi_2p0.fits'),nside)[idx1]
     #im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/data_resmap_f353_ns512_rns32_IIcib_PR3_nhi_6p0.fits'),nside)[idx1]
     #im=hp.ud_grade(hp.read_map('/travail/jdelouis/CIB/residual_map_f353_ns2048_cmb_subtracted_full.fits'),nside)[idx1]
-    
-    #mask=np.ones([1,im.shape[0]])
-    #mask[0,:]=(im!=hp.UNSEEN)
+    im=hp.ud_grade(np.load('data/CIB_SIMU.npy'),nside)[idx1]
+    mask=np.ones([1,im.shape[0]])
+    mask[0,:]=(im!=hp.UNSEEN)
+    im[mask[0,:]==0]=0.0
 
     #=================================================================================
     # Compute and crop it to be used at the smallest scale
@@ -191,38 +201,43 @@ def main():
 
     amp=np.std(im[mask[0]==1])
     smask=hp.smoothing(mask[0,idx],np.pi/nside)[idx1]>0.7
-    smask2=hp.smoothing(mask[0,idx],np.pi/32.0)[idx1]>0.
-    
+    smask2=hp.smoothing(mask[0,idx],np.pi/32.0)[idx1]
+
     """
     plt.figure()
-    hp.gnomview(mask[0,:],rot=[305,-60],reso=4,xsize=260,cmap='jet',hold=False,sub=(1,2,1),nest=True)
-    hp.gnomview(smask,rot=[305,-60],reso=4,xsize=260,cmap='jet',hold=False,sub=(1,2,2),nest=True)
+    hp.gnomview(mask[0,:],rot=[305,-60],reso=4,xsize=260,cmap='jet',hold=False,sub=(1,3,1),nest=True)
+    hp.gnomview(smask,rot=[305,-60],reso=4,xsize=260,cmap='jet',hold=False,sub=(1,3,2),nest=True)
+    hp.gnomview(smask2,rot=[305,-60],reso=4,xsize=260,cmap='jet',hold=False,sub=(1,3,3),nest=True)
     plt.show()
     exit(0)
     """
 
     mask[0]=smask/smask.mean()
-    mask2=np.expand_dims(smask2/smask2.mean(),0)
+    mask2=0.01*np.expand_dims((smask2/smask2.mean())**2*mask[0],0)
 
     #=================================================================================
     # DEFINE A LOSS FUNCTION AND THE SYNTHESIS
     #=================================================================================
         
     def loss_diff(x,scat_operator,args):
-        
-        im  = scat_operator.to_R(args[0])
-        mask = scat_operator.to_R(args[1][0])
+        if doR:
+            im  = scat_operator.to_R(args[0])
+            mask = scat_operator.to_R(args[1][0])
+        else:
+            im  = args[0]
+            mask = args[1][0]
 
-        loss=scat_operator.backend.bk_reduce_mean(scat_operator.backend.bk_square(300*mask*(x-im)))      
+        loss=scat_operator.backend.bk_reduce_mean(scat_operator.backend.bk_square(3000*mask*(x-im)))      
 
         return(loss)
 
     def loss_scat(x,scat_operator,args):
         
-        ref = args[0]
+        ref   = args[0]
         refsig = args[1]
+        refn   = args[2]
 
-        learn=scat_operator.eval(x).iso_mean()
+        learn=(scat_operator.eval(x)/refn).iso_mean()
 
         loss=scat_operator.reduce_mean(scat_operator.square(refsig*(ref-learn)))      
 
@@ -241,9 +256,14 @@ def main():
         return(loss)
 
     refv=scat_op.eval(im,mask=mask)
+
+    refn=scat_op.eval(np.random.randn(im.shape[0]),mask=mask)
+    for i in range(99):
+        refn=refn+scat_op.eval(np.random.randn(im.shape[0]),mask=mask)
+    refn=refn/100.0
+    refv=refv/refn
     ref=refv.iso_mean()
     refsig=1/refv.iso_std()
-
 
     """
     print(refX.S1.numpy().flatten())
@@ -256,26 +276,30 @@ def main():
     plt.show()
     exit(0)
     """
-    loss1=synthe.Loss(loss_scat,scat_op,ref,refsig)
-    loss2=synthe.Loss(loss_diff,scat_op,im.astype('float32'),mask.astype('float32'))
-    loss3=synthe.Loss(loss_scat_mask,scat_op,ref,refsig,mask2)
+    loss1=synthe.Loss(loss_scat,scat_op,ref.constant(),refsig.constant(),refn.constant())
+    
+    loss2=synthe.Loss(loss_diff,scat_op,
+                      scat_op.backend.constant(im.astype('float32')),
+                      scat_op.backend.constant(mask2.astype('float32')))
+    
+    #loss3=synthe.Loss(loss_scat_mask,scat_op,ref,refsig,mask2)
         
-    const_sy = synthe.Synthesis([loss1,loss2,loss3])
+    const_sy = synthe.Synthesis([loss1,loss2]) #,loss3])
     blind_sy = synthe.Synthesis([loss1])
-
+    
     #=================================================================================
     # RUN SYNTHESIS DRIVEN BY INPUT DATA
     #=================================================================================
     np.random.seed(seed)
     imap=np.random.randn(12*nside**2)*amp
     imap=(imap-hp.smoothing(imap,np.pi/(2**nscale)))[idx1]
-    imap[mask[0]==1]=im[mask[0]==1]
-    omap=const_sy.run(imap,NUM_EPOCHS = 3000,EVAL_FREQUENCY=10)
+    #imap[mask[0]==1]=im[mask[0]==1]
+    omap=const_sy.run(imap,NUM_EPOCHS = nstep,EVAL_FREQUENCY=10)
     
     np.save(outpath+'outD_%s_map_%d.npy'%(outname,nside),omap)
     np.save(outpath+'inD_%s_map_%d.npy'%(outname,nside),im)
     np.save(outpath+'maskD_%s_map_%d.npy'%(outname,nside),mask)
-
+    
     #=================================================================================
     # RUN RANDOM SYNTHESIS
     #=================================================================================
